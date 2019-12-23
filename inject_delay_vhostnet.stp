@@ -1,0 +1,26 @@
+global inject, ka_cnt
+
+probe procfs("cnt").read {
+    $value = sprintf("%d\n", ka_cnt);
+}
+probe procfs("inject").write {
+    inject = $value;
+    printf("inject count %d, ka %s", ka_cnt, inject);
+}
+
+function proc:string() {
+    return sprintf("%d (%s)", pid(), execname())
+}
+
+probe module("vhost_net").function("handle_rx").return {
+    if (execname() == @1 && inject == "on\n") {
+        // printf("%s handle_rx:\n", proc());
+        ka_cnt++;
+        udelay($2);
+    }
+}
+
+probe begin {
+    println("ik module begin:)");
+}
+
